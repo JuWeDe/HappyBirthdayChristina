@@ -9,9 +9,11 @@ function goToScreen(num){
     if (isTarget){
       s.classList.remove('screen--exit');
       s.classList.add('screen--active');
-      // Если перешли на экран подарков, инициализируем скетч-карты
+      
+      // Специфический фикс для iOS: инициализируем холсты только тогда, 
+      // когда экран стал видимым и элементы получили реальные размеры!
       if(num === 4) {
-         setTimeout(initScratchCards, 300);
+         setTimeout(initScratchCards, 150);
       }
     } else if (s.classList.contains('screen--active')) {
       s.classList.add('screen--exit');
@@ -22,7 +24,7 @@ function goToScreen(num){
 
 document.getElementById('btn-to-quest').addEventListener('click', () => {
   goToScreen(2);
-  initAudio(); // Активируем контекст аудио при первом клике пользователя
+  initAudio(); 
 });
 
 document.getElementById('btn-to-interactive').addEventListener('click', () => {
@@ -39,13 +41,18 @@ const iconPlay = musicToggle.querySelector('.icon-play');
 const iconPause = musicToggle.querySelector('.icon-pause');
 
 function initAudio() {
-  // На iOS воспроизведение возможно только после действия пользователя
+  // Корректный запуск аудио-контекста на iOS при первом тапе
   if (audio.paused) {
-    // Просто подготавливаем, не запуская насильно, если не нужно
+    audio.play().then(() => {
+      iconPlay.classList.add('hidden');
+      iconPause.classList.remove('hidden');
+      trackStatus.textContent = 'Сейчас играет ⚡';
+    }).catch(() => {});
   }
 }
 
-musicToggle.addEventListener('click', () => {
+musicToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (audio.paused) {
     audio.play().then(() => {
       iconPlay.classList.add('hidden');
@@ -135,27 +142,28 @@ function moveNoButton() {
   const container = document.querySelector('.runaway-container');
   const containerRect = container.getBoundingClientRect();
   
-  // Рассчитываем случайные координаты внутри контейнера, учитывая размеры кнопки
-  const maxX = containerRect.width - btnNo.offsetWidth;
-  const maxY = containerRect.height - btnNo.offsetHeight;
+  // Учитываем паддинги и физические размеры кнопки, чтобы она не вылетала за рамки контейнера
+  const maxX = containerRect.width - btnNo.offsetWidth - 10;
+  const maxY = containerRect.height - btnNo.offsetHeight - 10;
   
-  const randomX = Math.floor(Math.random() * Math.max(maxX, 50));
-  const randomY = Math.floor(Math.random() * Math.max(maxY, 50));
+  const randomX = Math.max(10, Math.floor(Math.random() * maxX));
+  const randomY = Math.max(10, Math.floor(Math.random() * maxY));
   
   btnNo.style.left = randomX + 'px';
   btnNo.style.top = randomY + 'px';
+  btnNo.style.margin = '0'; // сбрасываем дефолтное центрирование флексбокса
   
   // Увеличиваем кнопку ДА
-  yesScale += 0.25;
+  yesScale += 0.2;
   btnYes.style.transform = `scale(${yesScale})`;
 }
 
-// На смартфонах реагируем на touchend/click мгновенно
-btnNo.addEventListener('click', (e) => {
+// На iOS обрабатываем touchend превентивно, чтобы избежать двойных срабатываний
+btnNo.addEventListener('touchend', (e) => {
   e.preventDefault();
   moveNoButton();
 });
-btnNo.addEventListener('touchend', (e) => {
+btnNo.addEventListener('click', (e) => {
   e.preventDefault();
   moveNoButton();
 });
@@ -181,26 +189,24 @@ authGyroBtn.addEventListener('click', () => {
       })
       .catch(console.error);
   } else {
-    // Для устройств, где разрешение не требуется по дефолту
     window.addEventListener('deviceorientation', handleOrientation);
     authGyroBtn.style.display = 'none';
   }
 });
 
 function handleOrientation(event) {
-  // Наклон влево/вправо (gamma) и вперед/назад (beta)
-  const tiltX = Math.min(Math.max(event.gamma, -30), 30) / 3; // Ограничиваем угол наклона
+  const tiltX = Math.min(Math.max(event.gamma, -30), 30) / 3; 
   const tiltY = Math.min(Math.max(event.beta, -30), 30) / 3;
 
   const cards = gyroContainer.querySelectorAll('.polaroid');
   cards.forEach((card, index) => {
     const depthModifier = (index + 1) * 0.4;
-    card.style.transform = `rotate(${(index % 2 === 0 ? -3 : 3) + tiltX}deg) translate3d(${tiltX * depthModifier}px, ${tiltY * depthModifier}px, 0px)`;
+    card.style.transform = `rotate(${(index % 2 === 0 ? -4 : 4) + tiltX}deg) translate3d(${tiltX * depthModifier}px, ${tiltY * depthModifier}px, 0px)`;
   });
 }
 
 /* ============================================================
-   СКЕТЧ-КАРТЫ (SCRATCH CARDS LOGIC)
+   СКЕТЧ-КАРТЫ (ФИКСИРОВАННЫЙ UX ДЛЯ ТАЧ-ЭКРАНОВ IPHONE)
    ============================================================ */
 function initScratchCards() {
   const containers = document.querySelectorAll('.scratch-container');
@@ -210,10 +216,12 @@ function initScratchCards() {
     if (!canvas || canvas.dataset.initialized === 'true') return;
     
     const ctx = canvas.getContext('2d');
-    canvas.width = container.offsetWidth;
-    canvas.height = container.offsetHeight;
     
-    // Рисуем стильный защитный слой (розовато-серебристый градиент)
+    // Принудительно задаем внутреннее разрешение холста равным его CSS-размерам
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    
+    // Рисуем стильный серебристо-космический градиент
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     gradient.addColorStop(0, '#2b2531');
     gradient.addColorStop(0.5, '#e6879a');
@@ -221,11 +229,12 @@ function initScratchCards() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Текст-подсказка сверху слоя
-    ctx.font = 'bold 12px Unbounded, sans-serif';
+    // Шрифт
+    ctx.font = 'bold 11px Unbounded, sans-serif';
     ctx.fillStyle = '#f3ead8';
     ctx.textAlign = 'center';
-    ctx.fillText('СОТРИ МЕНЯ', canvas.width / 2, canvas.height / 2);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('СОТРИ ПАЛЬЦЕМ', canvas.width / 2, canvas.height / 2);
     
     let isDrawing = false;
     
@@ -233,24 +242,24 @@ function initScratchCards() {
       if (!isDrawing) return;
       
       const rect = canvas.getBoundingClientRect();
-      // Рассчитываем координаты тача или клика с учетом скролла
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
       const x = clientX - rect.left;
       const y = clientY - rect.top;
       
       ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
-      ctx.arc(x, y, 25, 0, Math.PI * 2); // Радиус кисти стирания
+      ctx.arc(x, y, 22, 0, Math.PI * 2); // Комфортный радиус под палец
       ctx.fill();
     }
     
-    // События мыши
     canvas.addEventListener('mousedown', () => isDrawing = true);
     canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mouseleave', () => isDrawing = false);
     canvas.addEventListener('mousemove', scratch);
     
-    // События тач-скрина (iPhone)
+    // Полная блокировка нативных жестов iOS (чтобы страница не дергалась при стирании)
     canvas.addEventListener('touchstart', (e) => { isDrawing = true; scratch(e); });
     canvas.addEventListener('touchend', () => isDrawing = false);
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); scratch(e); }, { passive: false });
