@@ -1,0 +1,704 @@
+:root{
+  --bg:            #0b0a0c;
+  --bg-soft:       #141119;
+  --card:          #1a1620;
+  --card-border:   #2b2531;
+  --cream:         #f3ead8;
+  --cream-dim:     #cfc6b8;
+  --rose:          #e6879a;
+  --rose-dim:      #b96b7c;
+  --gold:          #cba135;
+
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --display: 'Unbounded', system-ui, sans-serif;
+  --sans: 'Manrope', system-ui, sans-serif;
+
+  --ease: cubic-bezier(.22,.9,.3,1);
+}
+
+*{ box-sizing:border-box; }
+
+html,body{
+  margin:0;
+  padding:0;
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--cream);
+  font-family:var(--sans);
+  overflow-x:hidden;
+}
+
+body{
+  position:relative;
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.grain{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:2;
+  opacity:.05;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+#particles{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+}
+
+/* ============================================================
+   КОМПАКТНЫЙ IPOD ПЛЕЕР
+   ============================================================ */
+.ipod-player {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 100;
+  background: rgba(26, 22, 32, 0.85);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(10px);
+  padding: 8px 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 280px;
+}
+
+.ipod-play-btn {
+  background: var(--rose);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #1a0e12;
+  transition: transform 0.2s;
+}
+.ipod-play-btn:active { transform: scale(0.9); }
+
+.ipod-track-info {
+  display: flex;
+  flex-direction: column;
+}
+.ipod-track-title {
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cream);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ipod-track-status {
+  font-size: 10px;
+  color: var(--cream-dim);
+}
+.hidden { display: none !important; }
+
+/* ============================================================
+   ЭКРАНЫ / ПЕРЕХОДЫ
+   ============================================================ */
+#app{
+  position:relative;
+  z-index:3;
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.screen{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8vh 6vw;
+  opacity:0;
+  transform:translateY(24px) scale(.98);
+  pointer-events:none;
+  transition:opacity .7s var(--ease), transform .7s var(--ease);
+  overflow-y:auto;
+}
+
+.screen--active{
+  opacity:1;
+  transform:translateY(0) scale(1);
+  pointer-events:auto;
+}
+
+.screen--exit{
+  opacity:0;
+  transform:translateY(-24px) scale(.98);
+}
+
+/* ============================================================
+   ЭКРАН 1 — ПОЗДРАВЛЕНИЕ
+   ============================================================ */
+.stamp{
+  position:absolute;
+  top:28px;
+  right:28px;
+  font-family:var(--display);
+  font-size:9px;
+  letter-spacing:.14em;
+  color:var(--cream-dim);
+  border:1px solid var(--card-border);
+  padding:6px 10px;
+  border-radius:999px;
+  opacity:.6;
+  cursor:pointer;
+  user-select:none;
+  transition:opacity .2s, transform .2s;
+  z-index:5;
+}
+.stamp:hover{ opacity:1; transform:scale(1.04); }
+.stamp:active{ transform:scale(.96); }
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:32px;
+  transform:translate(-50%, 20px);
+  z-index:20;
+  background:var(--cream);
+  color:var(--bg);
+  font-family:var(--sans);
+  font-size:13px;
+  font-weight:600;
+  padding:12px 20px;
+  border-radius:999px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .35s var(--ease), transform .35s var(--ease);
+  max-width:88vw;
+  text-align:center;
+}
+.toast.toast--show{
+  opacity:1;
+  transform:translate(-50%, 0);
+}
+
+.hero{
+  max-width:640px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:28px;
+}
+
+.eyebrow{
+  font-family:var(--display);
+  font-size:12px;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:var(--rose);
+  margin:0;
+  opacity:0;
+  animation:fade-up .8s var(--ease) .1s forwards;
+}
+
+.hero__title{
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:600;
+  font-size:clamp(52px, 12vw, 104px);
+  line-height:1;
+  margin:0;
+  background:linear-gradient(180deg, var(--cream) 40%, var(--rose) 140%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  opacity:0;
+  animation:fade-up .9s var(--ease) .25s forwards;
+}
+
+.hero__text{
+  font-family:var(--serif);
+  font-size:clamp(18px, 3vw, 24px);
+  line-height:1.5;
+  color:var(--cream-dim);
+  margin:0;
+}
+
+.reveal-line{
+  margin:0 0 4px;
+  opacity:0;
+  transform:translateY(10px);
+  animation:fade-up .7s var(--ease) forwards;
+}
+.reveal-line:nth-child(1){ animation-delay:.6s; }
+.reveal-line:nth-child(2){ animation-delay:.85s; }
+.reveal-line:nth-child(3){ animation-delay:1.1s; }
+.reveal-line:nth-child(4){ animation-delay:1.35s; }
+.reveal-line:nth-child(5){ animation-delay:1.6s; }
+
+.reveal-line--accent{
+  color:var(--rose);
+  font-style:italic;
+  margin-top:10px;
+}
+
+@keyframes fade-up{
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
+.btn{
+  font-family:var(--display);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  border:none;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:18px 28px;
+  border-radius:999px;
+  transition:transform .3s var(--ease), box-shadow .3s var(--ease), background .3s var(--ease);
+}
+
+.btn--primary{
+  background:var(--rose);
+  color:#1a0e12;
+  opacity:0;
+  animation:fade-up .8s var(--ease) 1.9s forwards;
+}
+
+.btn--primary:hover{
+  transform:translateY(-3px);
+  box-shadow:0 12px 30px rgba(230,135,154,.35);
+  background:var(--cream);
+}
+.btn--primary:active{ transform:translateY(0); }
+
+/* ============================================================
+   ЭКРАН 2 — КВЕСТ
+   ============================================================ */
+.quest{
+  max-width:520px;
+  width:100%;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:18px;
+}
+
+.tag{
+  font-family:var(--display);
+  font-size:11px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--bg);
+  background:var(--gold);
+  padding:6px 14px;
+  border-radius:999px;
+}
+
+.quest__title{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:clamp(22px, 5vw, 32px);
+  line-height:1.25;
+  margin:6px 0 0;
+  color:var(--cream);
+}
+
+.quest__title-sub{
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:500;
+  font-size:.7em;
+  color:var(--rose-dim);
+}
+
+.quest__question{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:clamp(20px, 4vw, 26px);
+  color:var(--cream-dim);
+  margin:0;
+}
+
+.quest__options{
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:10px;
+}
+
+.option-btn{
+  padding:18px 16px;
+  border-radius:16px;
+  border:1px solid var(--card-border);
+  background:var(--card);
+  color:var(--cream);
+  font-family:var(--display);
+  font-weight:700;
+  font-size:14px;
+  letter-spacing:.02em;
+  cursor:pointer;
+  transition:border-color .25s var(--ease), transform .2s var(--ease), background .25s var(--ease), color .25s var(--ease);
+}
+
+.option-btn:hover{
+  border-color:var(--rose);
+  transform:translateY(-2px);
+}
+.option-btn:active{ transform:translateY(0); }
+
+.option-btn.is-correct{
+  background:var(--rose);
+  color:#1a0e12;
+  border-color:var(--rose);
+}
+
+.option-btn.is-wrong{
+  animation:shake .45s var(--ease);
+  border-color:var(--rose-dim);
+  opacity:.5;
+}
+
+.option-btn.is-disabled{
+  pointer-events:none;
+  opacity:.35;
+}
+
+@keyframes shake{
+  0%,100%{ transform:translateX(0); }
+  20%{ transform:translateX(-10px); }
+  40%{ transform:translateX(8px); }
+  60%{ transform:translateX(-6px); }
+  80%{ transform:translateX(4px); }
+}
+
+.quest__hint{
+  min-height:20px;
+  font-family:var(--sans);
+  font-size:14px;
+  color:var(--rose-dim);
+  margin:0;
+}
+.quest__hint.ok{ color:var(--gold); }
+
+/* ============================================================
+   ЭКРАН 3 — ПИСЬМА BRENT FAIYAZ
+   ============================================================ */
+.letters{
+  max-width:640px;
+  width:100%;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+}
+
+.letters__title{
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:600;
+  font-size:clamp(26px, 5vw, 36px);
+  margin:6px 0 0;
+  color:var(--cream);
+}
+
+.letters__text{
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.6;
+  color:var(--cream-dim);
+  max-width:480px;
+  margin:0;
+}
+
+.letters__accent{
+  color:var(--rose);
+  font-weight:700;
+}
+
+.polaroids{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:22px;
+  margin-top:6px;
+  perspective:1000px;
+  transform-style: preserve-3d;
+}
+
+.polaroid{
+  background:var(--cream);
+  padding:12px 12px 20px;
+  border-radius:4px;
+  width:150px;
+  margin:0;
+  box-shadow:0 14px 30px rgba(0,0,0,.35);
+  opacity:0;
+  transform:translateY(20px) rotate(0deg);
+  animation:fade-up .6s var(--ease) forwards;
+  transition:transform 0.1s ease-out, box-shadow .35s var(--ease);
+  cursor:pointer;
+}
+
+.polaroid--1{ animation-delay:.1s; transform:rotate(-6deg); }
+.polaroid--2{ animation-delay:.25s; transform:rotate(3deg); }
+.polaroid--3{ animation-delay:.4s; transform:rotate(-2deg); }
+
+.polaroid:hover{
+  box-shadow:0 22px 40px rgba(0,0,0,.45);
+  z-index:2;
+}
+
+.polaroid__img{
+  width:100%;
+  aspect-ratio:4/5;
+  object-fit:cover;
+  display:block;
+  border-radius:2px;
+  background:var(--bg-soft);
+}
+
+.polaroid__caption{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:12px;
+  color:#2a2420;
+  margin-top:10px;
+  text-align:center;
+}
+
+/* ============================================================
+   ЭКРАН 3.5 — ПАНЕЛЬ ИНТЕРАКТИВНЫХ КНОПОК ДА/НЕТ
+   ============================================================ */
+.interactive-panel {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.runaway-container {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  margin-top: 20px;
+  border: 1px dashed rgba(230, 135, 154, 0.2);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   ОВЕРЛЕЙ ОТКРЫВАЮЩЕЙСЯ КОРОБКИ
+   ============================================================ */
+.box-overlay{
+  position:fixed;
+  inset:0;
+  z-index:50;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .3s var(--ease);
+}
+
+.box-overlay.box-overlay--play{
+  opacity:1;
+  pointer-events:auto;
+}
+
+.box{
+  position:relative;
+  width:160px;
+  height:120px;
+  perspective:600px;
+}
+
+.box__body{
+  position:absolute;
+  inset:0;
+  top:40px;
+  background:var(--card);
+  border:2px solid var(--rose-dim);
+  border-radius:6px;
+}
+
+.box__lid{
+  position:absolute;
+  top:40px;
+  left:0;
+  right:0;
+  height:24px;
+  background:var(--rose);
+  border-radius:6px 6px 0 0;
+  transform-origin:top center;
+  transform:rotateX(0deg);
+}
+
+.box-overlay--play .box__lid{
+  animation:lid-open 1s var(--ease) .2s forwards;
+}
+
+@keyframes lid-open{
+  to{ transform:rotateX(-130deg) translateY(-10px); }
+}
+
+/* ============================================================
+   ЭКРАН 4 — ПОДАРКИ (СКЕТЧ-КАНВАС СВЕРХУ)
+   ============================================================ */
+.gifts{
+  max-width:900px;
+  width:100%;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:24px;
+}
+
+.gifts__title{
+  font-family:var(--serif);
+  font-style:italic;
+  font-weight:600;
+  font-size:clamp(26px, 5vw, 40px);
+  line-height:1.3;
+  margin:6px 0 0;
+  color:var(--cream);
+}
+
+.gifts__grid{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:18px;
+  margin-top:8px;
+}
+
+.gift-card{
+  background:var(--card);
+  border:1px solid var(--card-border);
+  border-radius:20px;
+  padding:16px;
+  text-align:left;
+  opacity:0;
+  transform:translateY(18px);
+  animation:fade-up .6s var(--ease) forwards;
+}
+
+.gifts__grid .gift-card:nth-child(1){ animation-delay:.15s; }
+.gifts__grid .gift-card:nth-child(2){ animation-delay:.3s; }
+.gifts__grid .gift-card:nth-child(3){ animation-delay:.45s; }
+.gifts__grid .gift-card:nth-child(4){ animation-delay:.6s; }
+.gifts__grid .gift-card:nth-child(5){ animation-delay:.75s; }
+.gifts__grid .gift-card:nth-child(6){ animation-delay:.9s; }
+.gifts__grid .gift-card:nth-child(7){ animation-delay:1.05s; }
+
+.scratch-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: var(--bg-soft);
+}
+
+.scratch-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  cursor: crosshair;
+  touch-action: none; /* Предотвращает системный скролл iPhone при стирании слоя */
+}
+
+.gift-card__img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transition:transform .5s var(--ease);
+}
+
+.gift-card:hover .gift-card__img{ transform:scale(1.06); }
+
+.gift-card__title{
+  font-family:var(--display);
+  font-size:14px;
+  font-weight:700;
+  margin:0 0 6px;
+  color:var(--cream);
+}
+
+.gift-card__desc{
+  font-family:var(--sans);
+  font-size:13px;
+  line-height:1.45;
+  color:var(--cream-dim);
+  margin:0;
+}
+
+.gifts__ps{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:clamp(15px, 2.6vw, 18px);
+  line-height:1.6;
+  color:var(--rose);
+  max-width:560px;
+  margin-top:10px;
+  opacity:0;
+  animation:fade-up .7s var(--ease) .9s forwards;
+}
+
+.gifts__ps-label{
+  font-family:var(--display);
+  font-style:normal;
+  font-weight:700;
+  color:var(--gold);
+  margin-right:6px;
+}
+
+/* ============================================================
+   АДАПТИВНОСТЬ ДЛЯ IPHONE / СМАРТФОНОВ
+   ============================================================ */
+@media (max-width: 480px){
+  .screen{ padding:6vh 6vw; }
+  .stamp{ top:16px; right:16px; font-size:8px; padding:5px 8px; }
+  .ipod-player { top:12px; left:12px; padding: 6px 12px; max-width: 200px; }
+  .ipod-track-title { font-size: 8px; }
+  .hero{ gap:20px; }
+  .quest__options{ grid-template-columns:1fr 1fr; gap:10px; }
+  .option-btn{ padding:16px 10px; font-size:12px; }
+  .gifts__grid{ grid-template-columns:repeat(2, 1fr); gap:12px; }
+  .gift-card { padding: 10px; border-radius: 14px; }
+  .gift-card__title { font-size: 11px; }
+  .gift-card__desc { font-size: 10px; }
+  .btn{ padding:16px 22px; font-size:12px; }
+  .polaroids{ gap:14px; }
+  .polaroid{ width:42vw; max-width:150px; }
+  .runaway-container { height: 220px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+} 
