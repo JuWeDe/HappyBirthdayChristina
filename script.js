@@ -9,12 +9,6 @@ function goToScreen(num){
     if (isTarget){
       s.classList.remove('screen--exit');
       s.classList.add('screen--active');
-      
-      // Специфический фикс для iOS: инициализируем холсты только тогда, 
-      // когда экран стал видимым и элементы получили реальные размеры!
-      if(num === 4) {
-         setTimeout(initScratchCards, 150);
-      }
     } else if (s.classList.contains('screen--active')) {
       s.classList.add('screen--exit');
       s.classList.remove('screen--active');
@@ -24,11 +18,13 @@ function goToScreen(num){
 
 document.getElementById('btn-to-quest').addEventListener('click', () => {
   goToScreen(2);
-  initAudio(); 
+  initAudio();
+  requestGyroPermission(); // важно: запрашиваем именно внутри обработчика клика (требование iOS)
 });
 
 document.getElementById('btn-to-interactive').addEventListener('click', () => {
   goToScreen(35);
+  moveNoButton(); // сразу даём кнопке "Нет" случайную позицию внутри рамки, а не дефолтную из HTML
 });
 
 /* ============================================================
@@ -174,99 +170,202 @@ btnYes.addEventListener('click', () => {
 
 /* ============================================================
    ЛОГИКА ГИРОСКОПА (iOS DeviceOrientation)
+   Раньше разрешение запрашивалось отдельной (плохо видимой) кнопкой
+   на экране писем. Теперь запрос идёт сразу при первом тапе по
+   главной кнопке на экране 1 — это тоже "прямой жест пользователя",
+   которого требует iOS, и так гораздо надёжнее + гироскоп успевает
+   заработать уже к моменту показа писем и подарков.
    ============================================================ */
-const gyroContainer = document.getElementById('gyro-container');
-const authGyroBtn = document.getElementById('btn-gyro-auth');
+const gyroContainer = document.getElementById('gyro-container'); // оставлено для совместимости, наклон теперь применяется через .tilt-target глобально
+let gyroEnabled = false;
 
-authGyroBtn.addEventListener('click', () => {
+function requestGyroPermission(){
+  if (gyroEnabled) return;
   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
     DeviceOrientationEvent.requestPermission()
       .then(permissionState => {
         if (permissionState === 'granted') {
+          gyroEnabled = true;
           window.addEventListener('deviceorientation', handleOrientation);
-          authGyroBtn.style.display = 'none';
         }
       })
-      .catch(console.error);
-  } else {
+      .catch(() => {}); // если отклонила разрешение — сайт просто работает без наклона
+  } else if (typeof DeviceOrientationEvent !== 'undefined') {
+    // Android и большинство десктопов разрешения не спрашивают вообще
+    gyroEnabled = true;
     window.addEventListener('deviceorientation', handleOrientation);
-    authGyroBtn.style.display = 'none';
   }
-});
+}
 
 function handleOrientation(event) {
-  const tiltX = Math.min(Math.max(event.gamma, -30), 30) / 3; 
+  if (event.gamma === null || event.beta === null) return;
+  const tiltX = Math.min(Math.max(event.gamma, -30), 30) / 3;
   const tiltY = Math.min(Math.max(event.beta, -30), 30) / 3;
 
-  const cards = gyroContainer.querySelectorAll('.polaroid');
-  cards.forEach((card, index) => {
-    const depthModifier = (index + 1) * 0.4;
-    card.style.transform = `rotate(${(index % 2 === 0 ? -4 : 4) + tiltX}deg) translate3d(${tiltX * depthModifier}px, ${tiltY * depthModifier}px, 0px)`;
+  // Наклон применяется и к полароидам с письмами, и к карточкам подарков —
+  // элементы помечены классом .tilt-target
+  document.querySelectorAll('.tilt-target').forEach((card, index) => {
+    const depthModifier = (index % 4 + 1) * 0.35;
+    const baseRotate = card.dataset.baseRotate ? Number(card.dataset.baseRotate) : 0;
+    card.style.transform = `rotate(${baseRotate + tiltX}deg) translate3d(${tiltX * depthModifier}px, ${tiltY * depthModifier}px, 0px)`;
   });
 }
 
 /* ============================================================
-   СКЕТЧ-КАРТЫ (ФИКСИРОВАННЫЙ UX ДЛЯ ТАЧ-ЭКРАНОВ IPHONE)
+   СКЕТЧ-КАРТЫ (НАДЁЖНАЯ ВЕРСИЯ)
+
+   БАГ, КОТОРЫЙ ЭТО ИСПРАВЛЯЕТ: раньше canvas.width/height выставлялись
+   один раз через фиксированный setTimeout(150мс). Если к этому моменту
+   веб-шрифты (Unbounded/Manrope) ещё не догрузились, сетка карточек
+   после их подгрузки могла чуть перестроиться — размер контейнера
+   менялся, а внутреннее разрешение canvas оставалось старым. Из-за
+   этого координаты скретч-жеста и фактический размер расходились:
+   визуально казалось, что "скребётся" не то место или не скребётся
+   вообще, а корректно выглядел только тот ряд/карточка, чей размер
+   случайно совпал.
+
+   Теперь вместо угадывания таймаута используем ResizeObserver —
+   он сообщает нам РЕАЛЬНЫЙ размер контейнера в любой момент (в том
+   числе после дозагрузки шрифтов или смены ориентации экрана) и мы
+   пересоздаём холст точно под него, с учётом devicePixelRatio для
+   чёткости на Retina-экране iPhone.
    ============================================================ */
-function initScratchCards() {
+const giftsProgressEl = document.getElementById('gifts-progress');
+const giftsCompleteEl = document.getElementById('gifts-complete');
+const TOTAL_GIFTS = document.querySelectorAll('.scratch-container').length;
+let scratchedCount = 0;
+
+function updateGiftsProgress(){
+  giftsProgressEl.textContent = `Открыто ${scratchedCount} из ${TOTAL_GIFTS} 🎁`;
+  if (scratchedCount >= TOTAL_GIFTS){
+    giftsProgressEl.classList.add('is-done');
+    giftsCompleteEl.classList.add('is-shown');
+    burstHearts();
+  }
+}
+
+function setupScratchCanvas(canvas, container){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = container.getBoundingClientRect();
+  if (rect.width < 2 || rect.height < 2) return; // контейнер ещё не отрисован — ждём следующего вызова
+
+  // Если холст уже готов и размер поменялся на пару пикселей (например, из-за
+  // подгрузки шрифта), не сбрасываем уже соскобленный пользователем прогресс —
+  // пересоздаём холст только при первой инициализации или при заметном ресайзе
+  // (поворот экрана и т.п.)
+  const prevWidth = Number(canvas.dataset.cssWidth || 0);
+  const prevHeight = Number(canvas.dataset.cssHeight || 0);
+  const changedSignificantly = Math.abs(rect.width - prevWidth) > 6 || Math.abs(rect.height - prevHeight) > 6;
+  if (canvas.dataset.ready === 'true' && !changedSignificantly) return;
+
+  canvas.dataset.cssWidth = rect.width;
+  canvas.dataset.cssHeight = rect.height;
+
+  const ctx = canvas.getContext('2d');
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // рисуем дальше в CSS-пикселях, а не в физических
+
+  const gradient = ctx.createLinearGradient(0, 0, rect.width, rect.height);
+  gradient.addColorStop(0, '#2b2531');
+  gradient.addColorStop(0.5, '#e6879a');
+  gradient.addColorStop(1, '#1a1620');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, rect.width, rect.height);
+
+  ctx.font = 'bold 11px Unbounded, sans-serif';
+  ctx.fillStyle = '#f3ead8';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('СОТРИ ПАЛЬЦЕМ', rect.width / 2, rect.height / 2);
+
+  canvas.dataset.ready = 'true';
+}
+
+function initScratchCards(){
   const containers = document.querySelectorAll('.scratch-container');
-  
+
   containers.forEach(container => {
     const canvas = container.querySelector('.scratch-canvas');
-    if (!canvas || canvas.dataset.initialized === 'true') return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Принудительно задаем внутреннее разрешение холста равным его CSS-размерам
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
-    
-    // Рисуем стильный серебристо-космический градиент
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, '#2b2531');
-    gradient.addColorStop(0.5, '#e6879a');
-    gradient.addColorStop(1, '#1a1620');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Шрифт
-    ctx.font = 'bold 11px Unbounded, sans-serif';
-    ctx.fillStyle = '#f3ead8';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('СОТРИ ПАЛЬЦЕМ', canvas.width / 2, canvas.height / 2);
-    
-    let isDrawing = false;
-    
-    function scratch(e) {
-      if (!isDrawing) return;
-      
+    if (!canvas || canvas.dataset.bound === 'true') return;
+    canvas.dataset.bound = 'true';
+
+    let scratchedPoints = 0;
+    let revealed = false;
+    const REVEAL_THRESHOLD = 28;
+
+    // Пересоздаём холст при любом реальном изменении размера контейнера —
+    // включая самый первый раз, когда он получает ненулевые размеры.
+    const observer = new ResizeObserver(() => setupScratchCanvas(canvas, container));
+    observer.observe(container);
+
+    function getPos(e){
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function scratchAt(x, y){
+      if (canvas.dataset.ready !== 'true') return;
+      const ctx = canvas.getContext('2d');
       ctx.globalCompositeOperation = 'destination-out';
       ctx.beginPath();
-      ctx.arc(x, y, 22, 0, Math.PI * 2); // Комфортный радиус под палец
+      ctx.arc(x, y, 22, 0, Math.PI * 2);
       ctx.fill();
+
+      scratchedPoints++;
+      if (scratchedPoints > REVEAL_THRESHOLD && !revealed){
+        revealed = true;
+        scratchedCount++;
+        updateGiftsProgress();
+        canvas.style.transition = 'opacity .5s ease';
+        canvas.style.opacity = '0';
+        setTimeout(() => { canvas.style.display = 'none'; }, 550);
+
+        // Показываем название и описание подарка только теперь — до этого
+        // они были размыты, чтобы не спойлерить, что внутри, раньше картинки
+        const giftCard = container.closest('.gift-card');
+        if (giftCard) giftCard.classList.add('is-revealed');
+      }
     }
-    
-    canvas.addEventListener('mousedown', () => isDrawing = true);
-    canvas.addEventListener('mouseup', () => isDrawing = false);
-    canvas.addEventListener('mouseleave', () => isDrawing = false);
-    canvas.addEventListener('mousemove', scratch);
-    
-    // Полная блокировка нативных жестов iOS (чтобы страница не дергалась при стирании)
-    canvas.addEventListener('touchstart', (e) => { isDrawing = true; scratch(e); });
-    canvas.addEventListener('touchend', () => isDrawing = false);
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); scratch(e); }, { passive: false });
-    
-    canvas.dataset.initialized = 'true';
+
+    let isDrawing = false;
+    const start = (e) => { isDrawing = true; const p = getPos(e); scratchAt(p.x, p.y); };
+    const move = (e) => { if (!isDrawing) return; const p = getPos(e); scratchAt(p.x, p.y); };
+    const end = () => { isDrawing = false; };
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start, { passive: true });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, { passive: false });
+    canvas.addEventListener('touchend', end);
   });
 }
+
+/* ============================================================
+   DOUBLE-TAP ЛАЙК НА ПОЛАРОИДАХ (в стиле Instagram)
+   ============================================================ */
+document.querySelectorAll('.polaroid').forEach(polaroid => {
+  let lastTap = 0;
+  const heart = polaroid.querySelector('.polaroid__heart');
+
+  function triggerLike(){
+    heart.classList.remove('pop');
+    void heart.offsetWidth; // перезапуск анимации
+    heart.classList.add('pop');
+  }
+
+  polaroid.addEventListener('click', () => {
+    const now = Date.now();
+    if (now - lastTap < 350) triggerLike(); // двойной тап/клик
+    lastTap = now;
+  });
+});
 
 /* ============================================================
    АНИМАЦИЯ ОТКРЫВАЮЩЕЙСЯ КОРОБКИ
@@ -372,3 +471,9 @@ function animate(){
   requestAnimationFrame(animate);
 }
 animate();
+
+/* Скретч-карты можно инициализировать сразу: благодаря position:fixed
+   у всех .screen контейнеры подарков уже имеют реальные размеры с
+   первой отрисовки страницы, дожидаться перехода на 4-й экран не нужно. */
+initScratchCards();
+updateGiftsProgress();

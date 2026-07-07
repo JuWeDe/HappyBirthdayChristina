@@ -17,7 +17,7 @@
 <div class="grain"></div>
 
 <!-- МУЗЫКАЛЬНЫЙ ТРЕК (Замени ссылку на реальный mp3 файл трека из ее плейлиста) -->
-<audio id="bg-music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+<audio id="bg-music" src="far_away.mp3" loop></audio>
 
 <!-- МИНИ-ПЛЕЕР IPOD STYLE -->
 <div class="ipod-player" id="ipod-player">
@@ -51,6 +51,8 @@
         <p class="reveal-line reveal-line--accent">Жду не дождусь дня, когда встречу тебя в Москве.</p>
       </div>
 
+      <!-- Эта кнопка теперь ещё и запрашивает разрешение на гироскоп (iOS требует,
+           чтобы запрос шёл строго из обработчика клика/тапа — этот клик им и является) -->
       <button class="btn btn--primary" id="btn-to-quest">
         <span>Узнать, что внутри коробки</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -62,7 +64,7 @@
   <section class="screen" id="screen-2" data-screen="2">
     <div class="quest">
       <span class="tag">ФЕЙС-КОНТРОЛЬ</span>
-      <h2 class="quest__title">Небольшая проверка<br>на музыкальный&nbsp;вкус<br><span class="quest__title-sub">(мы же оба меломаны, да?)</span></h2>
+      <h2 class="quest__title">Небольшая проверка<br>на музыкальный&nbsp;вкус<br><span class="quest__title-sub">(Уверен, ты справишься)</span></h2>
       <p class="quest__question">Кто мой любимый исполнитель?</p>
 
       <div class="quest__options" id="quest-options">
@@ -79,33 +81,32 @@
   <section class="screen" id="screen-3" data-screen="3">
     <div class="letters">
       <span class="tag">МАЛЕНЬКАЯ ИСТОРИЯ</span>
-      <h2 class="letters__title">Пока ты думала над ответом…</h2>
+      <h2 class="letters__title">I've got to tell you something…</h2>
 
       <p class="letters__text">
-        …я, если честно, писал письма твоему любимому музыканту —
-        <span class="letters__accent">Brent Faiyaz</span>.
-        Он, к сожалению, пока не успел ответить (наверное, очень занят),
+        …я, если честно, заранее писал письма твоему любимому музыканту —
+        <span class="letters__accent">Бренту</span>.
+        Он, к сожалению, не успел ответить,
         но вот скрины того, что я всё-таки отправил:
       </p>
 
       <div class="polaroids" id="gyro-container">
-        <figure class="polaroid polaroid--1">
-          <!-- Замени src на реальную гифку Брента или скриншот -->
+        <figure class="polaroid tilt-target polaroid--1" data-liked="0" data-base-rotate="-6">
           <img class="polaroid__img" src="firstAttempt.png" alt="Brent Faiyaz Gif">
           <figcaption class="polaroid__caption">письмо №1 — без ответа (пока)</figcaption>
+          <svg class="polaroid__heart" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 88 C20 65 5 45 5 25 C5 10 17 0 30 0 C40 0 47 6 50 14 C53 6 60 0 70 0 C83 0 95 10 95 25 C95 45 80 65 50 88Z"/></svg>
         </figure>
-        <figure class="polaroid polaroid--2">
+        <figure class="polaroid tilt-target polaroid--2" data-liked="0" data-base-rotate="3">
           <img class="polaroid__img" src="secondAttempt.png" alt="Скриншот письма 2">
           <figcaption class="polaroid__caption">письмо №2 — тоже без ответа</figcaption>
+          <svg class="polaroid__heart" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 88 C20 65 5 45 5 25 C5 10 17 0 30 0 C40 0 47 6 50 14 C53 6 60 0 70 0 C83 0 95 10 95 25 C95 45 80 65 50 88Z"/></svg>
         </figure>
       </div>
 
-      <button class="btn btn--secondary" id="btn-gyro-auth" style="margin-top: 10px; padding: 10px 20px; font-size: 11px;">
-        <span>🪄 Включить живой наклон (гироскоп)</span>
-      </button>
+      <p class="letters__tap-hint">💡 Тапни дважды по письму</p>
 
       <button class="btn btn--primary" id="btn-to-interactive">
-        <span>Ладно, показывай подарки</span>
+        <span>Далее...</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12H19M19 12L13 6M19 12L13 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
@@ -115,33 +116,34 @@
   <section class="screen" id="screen-interactive" data-screen="35">
     <div class="interactive-panel">
       <span class="tag">ФИНАЛЬНЫЙ ШАГ</span>
-      <h2 class="quest__title" style="margin-bottom: 30px;">Ну что, Кристина,<br>готова открыть посылку? 🖤</h2>
+      <h2 class="quest__title" style="margin-bottom: 30px;">Ну что, Кристина,<br>готова узнать что в посылке? 🖤</h2>
       
       <div class="runaway-container">
-        <button class="btn" id="btn-yes" style="background: var(--rose); color: #1a0e12; position: relative; z-index: 10;">ДА!</button>
-        <button class="btn" id="btn-no" style="background: var(--card-border); color: var(--cream); position: absolute;">Нет</button>
+        <button class="btn yesno-btn yesno-btn--yes" id="btn-yes">ДА!</button>
+        <button class="btn yesno-btn yesno-btn--no" id="btn-no" style="top:16px; left:16px;">Нет</button>
       </div>
+      
     </div>
+
   </section>
 
-  <!-- ОВЕРЛЕЙ ОТКРЫВАЮЩЕЙСЯ КОРОБКИ -->
   <div class="box-overlay" id="box-overlay">
     <div class="box">
       <div class="box__lid"></div>
       <div class="box__body"></div>
     </div>
   </div>
-
-  <!-- ЭКРАН 4 — СПИСОК ПОДАРКОВ С КАРТАМИ-СТЕРТЫШАМИ -->
   <section class="screen" id="screen-4" data-screen="4">
     <div class="gifts">
       <span class="tag">ПОСЫЛКА В ПУТИ</span>
       <h2 class="gifts__title">Ура! Смотри, что внутри.<br><span style="font-size: 15px; font-family: var(--sans); font-style: normal; color: var(--gold);">💡 Сотри пальцем защитный слой с карточек, чтобы распаковать подарки!</span></h2>
 
+      <p class="gifts__progress" id="gifts-progress">Открыто 0 из 7 🎁</p>
+
       <div class="gifts__grid">
 
         <!-- ПОДАРОК 1 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="-3">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=Kodak+FunSaver" alt="Kodak FunSaver 39">
@@ -151,7 +153,7 @@
         </article>
 
         <!-- ПОДАРОК 2 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="4">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=Kanye+Mask" alt="Маска Kanye West">
@@ -161,7 +163,7 @@
         </article>
 
         <!-- ПОДАРОК 3 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="-2">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=Yandex" alt="Брелок Яндекса">
@@ -171,7 +173,7 @@
         </article>
 
         <!-- ПОДАРОК 4 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="3">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=Diploma" alt="Корка диплома">
@@ -181,7 +183,7 @@
         </article>
 
         <!-- ПОДАРОК 5 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="-4">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=McLovin" alt="Стикер McLovin">
@@ -191,7 +193,7 @@
         </article>
 
         <!-- ПОДАРОК 6 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="2">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=T-Shirt" alt="Футболка">
@@ -201,7 +203,7 @@
         </article>
 
         <!-- ПОДАРОК 7 -->
-        <article class="gift-card dynamic-scratch">
+        <article class="gift-card dynamic-scratch tilt-target" data-base-rotate="-1">
           <div class="gift-card__img-wrap scratch-container">
             <canvas class="scratch-canvas"></canvas>
             <img class="gift-card__img" src="https://placehold.co/500x500/1a1620/e6879a?text=Solar+Powerbank" alt="Powerbank">
@@ -211,6 +213,9 @@
         </article>
 
       </div>
+
+      <!-- Появляется только когда все 7 карточек открыты — небольшой финальный праздник -->
+      <p class="gifts__complete" id="gifts-complete">🎉 Все подарки открыты! Ты официально распаковала всё (жаль что они всё ещё в пути o_0).</p>
 
       <p class="gifts__ps">
         <span class="gifts__ps-label">P.S.</span>

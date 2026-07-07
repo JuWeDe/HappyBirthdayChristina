@@ -118,7 +118,7 @@ body{
   position:fixed;
   inset:0;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:center;
   padding:8vh 6vw;
   opacity:0;
@@ -126,6 +126,17 @@ body{
   pointer-events:none;
   transition:opacity .7s var(--ease), transform .7s var(--ease);
   overflow-y:auto;
+}
+
+/* ФИКС БАГА: раньше align-items:center заставлял браузер центрировать
+   контент вертикально, и когда карточек становилось много (7 подарков),
+   верхняя часть уезжала ВЫШЕ видимой области экрана — а проскроллить
+   наверх невозможно физически (некуда). auto-margin на прямом потомке
+   даёт тот же красивый центр, но безопасно: если контента больше,
+   чем помещается, он просто начинается сверху и скроллится вниз. */
+.screen > *{
+  margin-top:auto;
+  margin-bottom:auto;
 }
 
 .screen--active{
@@ -482,6 +493,41 @@ body{
   text-align:center;
 }
 
+/* Instagram-style double-tap heart — приколюха на полароидах */
+.polaroid{ position:relative; }
+
+.polaroid__heart{
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:70px;
+  height:70px;
+  fill:#fff;
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.4));
+  transform:translate(-50%, -50%) scale(0);
+  opacity:0;
+  pointer-events:none;
+}
+
+.polaroid__heart.pop{
+  animation:heart-pop .7s var(--ease) forwards;
+}
+
+@keyframes heart-pop{
+  0%{ transform:translate(-50%,-50%) scale(0); opacity:0; }
+  35%{ transform:translate(-50%,-50%) scale(1.15); opacity:1; }
+  60%{ transform:translate(-50%,-50%) scale(.95); opacity:1; }
+  100%{ transform:translate(-50%,-50%) scale(1); opacity:0; }
+}
+
+.letters__tap-hint{
+  font-family:var(--sans);
+  font-size:12px;
+  color:var(--cream-dim);
+  opacity:.7;
+  margin:0;
+}
+
 /* ============================================================
    ЭКРАН 3.5 — ПАНЕЛЬ ИНТЕРАКТИВНЫХ КНОПОК ДА/НЕТ
    ============================================================ */
@@ -502,6 +548,25 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.yesno-btn--yes{
+  position: relative;
+  z-index: 10;
+  background: var(--rose);
+  color: #1a0e12;
+}
+
+/* БАГ, КОТОРЫЙ ЭТО ИСПРАВЛЯЕТ: кнопка "Нет" была background:var(--card-border) —
+   почти тот же тёмный оттенок, что и фон, из-за чего она физически
+   сливалась с задним планом и была невидима, пока её (случайно) не находили.
+   Теперь у неё контрастная светлая обводка + видимый фон, и в script.js
+   она сразу получает стартовую позицию внутри рамки при показе экрана. */
+.yesno-btn--no{
+  position: absolute;
+  background: var(--card);
+  color: var(--cream);
+  border: 2px solid var(--rose-dim);
 }
 
 /* ============================================================
@@ -584,6 +649,43 @@ body{
   color:var(--cream);
 }
 
+.gifts__progress{
+  font-family:var(--display);
+  font-size:12px;
+  letter-spacing:.08em;
+  color:var(--rose);
+  background:var(--card);
+  border:1px solid var(--card-border);
+  padding:8px 16px;
+  border-radius:999px;
+  margin:0;
+  transition:color .3s var(--ease), border-color .3s var(--ease);
+}
+
+.gifts__progress.is-done{
+  color:var(--gold);
+  border-color:var(--gold);
+}
+
+.gifts__complete{
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:clamp(16px, 3vw, 20px);
+  color:var(--gold);
+  text-align:center;
+  max-width:520px;
+  margin:0;
+  opacity:0;
+  max-height:0;
+  overflow:hidden;
+  transition:opacity .5s var(--ease), max-height .5s var(--ease);
+}
+
+.gifts__complete.is-shown{
+  opacity:1;
+  max-height:200px;
+}
+
 .gifts__grid{
   width:100%;
   display:grid;
@@ -648,6 +750,9 @@ body{
   font-weight:700;
   margin:0 0 6px;
   color:var(--cream);
+  filter:blur(7px);
+  user-select:none;
+  transition:filter .4s ease;
 }
 
 .gift-card__desc{
@@ -656,6 +761,20 @@ body{
   line-height:1.45;
   color:var(--cream-dim);
   margin:0;
+  filter:blur(5px);
+  user-select:none;
+  transition:filter .4s ease;
+}
+
+/* БАГ, КОТОРЫЙ ЭТО ИСПРАВЛЯЕТ: раньше название и описание подарка были видны
+   сразу, ещё до стирания картинки — по тексту описания легко угадывался
+   подарок, и сам скретч терял смысл. Теперь текст размыт по умолчанию и
+   становится читаемым только когда карточка помечена классом .is-revealed
+   (это происходит в script.js в тот момент, когда пользователь дообскрёб
+   картинку до конца). */.gift-card.is-revealed .gift-card__title,
+.gift-card.is-revealed .gift-card__desc{
+  filter:blur(0);
+  user-select:auto;
 }
 
 .gifts__ps{
